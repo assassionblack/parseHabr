@@ -11,6 +11,9 @@ from bs4 import BeautifulSoup
 
 
 def get_html(url):
+    """
+    function for get html page
+    """
     req = requests.get(url)
     src = req.text
 
@@ -19,6 +22,12 @@ def get_html(url):
 
 
 def get_data(file, date):
+    """
+    function for parse data from html page and give time publishing,
+        title post and link to page on habr.com
+    :param file - saved html file from get_html
+    :param date - the date before which to parse
+    """
     with open(file, "r", encoding="utf-8") as dat:
         src = dat.read()
 
@@ -39,12 +48,17 @@ def get_data(file, date):
             "link": f"https://habr.com{link}"
         }
         posts.append(post)
-        if post_date < str(date) and post_time < "24:00:00":
+        if post_date < str(date) and post_time < "18:00:00":
             break
     return posts
 
 
 def main():
+    """
+    function for get all posts from habr from inputted date(in sys.argv)
+        to current date
+    if date not given get posts for current day
+    """
     print("program for print posts from habr.com/ru/all into json file"
           "\n\tposts gets by current date, but if you want get posts "
           "from other date put your date into param:"
@@ -67,7 +81,7 @@ def main():
         posts = get_data(html_path, date)
         for post in posts:
             data.append(post)
-        if posts[-1].get("time").split(", ")[1] < "24:00:00" \
+        if posts[-1].get("time").split(", ")[1] < "18:00:00" \
                 and posts[-1].get("time").split(", ")[0] < date:
             with open("habr/posts.json", "w", encoding="utf-8") as file:
                 json.dump(data, file, indent=4, ensure_ascii=False)
