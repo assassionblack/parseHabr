@@ -40,8 +40,12 @@ def get_data(file, date):
         post_date = post_datetime.split("T")[0]
         post_time = post_datetime.split("T")[1].split(".")[0]
         time = f"{post_date}, {post_time}"
-        title = article.find(class_="tm-article-snippet__title-link").text
-        link = article.find("a", class_="tm-article-snippet__title-link").get("href")
+        if article.find(class_="tm-article-snippet__title-link") is None:
+            title = article.find(class_="tm-megapost-snippet__link tm-megapost-snippet__card").text
+            link = article.find("a", class_="tm-megapost-snippet__link tm-megapost-snippet__card").get("href")
+        else:
+            title = article.find(class_="tm-article-snippet__title-link").text
+            link = article.find("a", class_="tm-article-snippet__title-link").get("href")
         post = {
             "time": time,
             "title": title,
