@@ -36,9 +36,12 @@ def get_data(file, date):
     articles = soup.find_all("article")
     posts = []
     for article in articles:
-        post_datetime = article.find("time").get("datetime")
-        post_date = post_datetime.split("T")[0]
-        post_time = post_datetime.split("T")[1].split(".")[0]
+        try:
+            post_datetime = article.find("time").get("datetime")
+            post_date = post_datetime.split("T")[0]
+            post_time = post_datetime.split("T")[1].split(".")[0]
+        except Exception as exc:
+            continue
         time = f"{post_date}, {post_time}"
         if article.find(class_="tm-article-snippet__title-link") is None:
             title = article.find(class_="tm-megapost-snippet__link tm-megapost-snippet__card").text
