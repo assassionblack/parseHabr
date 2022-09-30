@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 def get_html(url):
     """
-    function for get html page
+    get html page
     """
     req = requests.get(url)
     src = req.text
@@ -23,7 +23,7 @@ def get_html(url):
 
 def get_data(file, date):
     """
-    function for parse data from html page and give time publishing,
+    parse data from html page and give time publishing,
         title post and link to page on habr.com
     :param file - saved html file from get_html
     :param date - the date before which to parse
@@ -41,6 +41,7 @@ def get_data(file, date):
             post_date = post_datetime.split("T")[0]
             post_time = post_datetime.split("T")[1].split(".")[0]
         except Exception as exc:
+            print(exc)
             continue
         time = f"{post_date}, {post_time}"
         if article.find(class_="tm-article-snippet__title-link") is None:
