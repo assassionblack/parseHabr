@@ -3,101 +3,89 @@
 import datetime
 import json
 import os.path
-import sys
-from time import sleep
 
 import requests
 from bs4 import BeautifulSoup
 
+cookies = {
+    '_ym_uid': '1653764274471504054',
+    '_ym_d': '1653764274',
+    'habr_web_home_feed': '/all/',
+    'hl': 'ru',
+    'fl': 'ru',
+    '_ga': 'GA1.2.1631445463.1653764275',
+    'visited_articles': '715134:717556:71839:656609:716434:713992:508192:716394:493852',
+}
 
-def get_html(url):
-    """
-    get html page
-    """
-    req = requests.get(url)
-    src = req.text
-
-    with open("habr/index.html", "w", encoding="utf-8") as file:
-        file.write(src)
-
-
-def get_data(file, date):
-    """
-    parse data from html page and give time publishing,
-        title post and link to page on habr.com
-    :param file - saved html file from get_html
-    :param date - the date before which to parse
-    """
-    with open(file, "r", encoding="utf-8") as dat:
-        src = dat.read()
-
-    soup = BeautifulSoup(src, "lxml")
-
-    articles = soup.find_all("article")
-    posts = []
-    for article in articles:
-        try:
-            post_datetime = article.find("time").get("datetime")
-            post_date = post_datetime.split("T")[0]
-            post_time = post_datetime.split("T")[1].split(".")[0]
-        except Exception as exc:
-            print(exc)
-            continue
-        time = f"{post_date}, {post_time}"
-        if article.find(class_="tm-article-snippet__title-link") is None:
-            title = article.find(class_="tm-megapost-snippet__link tm-megapost-snippet__card").text
-            link = article.find("a", class_="tm-megapost-snippet__link tm-megapost-snippet__card").get("href")
-        else:
-            title = article.find(class_="tm-article-snippet__title-link").text
-            link = article.find("a", class_="tm-article-snippet__title-link").get("href")
-        post = {
-            "time": time,
-            "title": title,
-            "link": f"https://habr.com{link}"
-        }
-        posts.append(post)
-        if post_date < str(date) and post_time < "18:00:00":
-            break
-    return posts
+headers = {
+    'Connection': 'keep-alive',
+    'Cache-Control': 'max-age=0',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.8 Chrome/87.0.4280.144 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'DNT': '1',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Sec-Fetch-Dest': 'document',
+    # 'Cookie': '_ym_uid=1653764274471504054; _ym_d=1653764274; habr_web_home_feed=/all/; hl=ru; fl=ru; _ga=GA1.2.1631445463.1653764275; visited_articles=715134:717556:71839:656609:716434:713992:508192:716394:493852',
+}
 
 
-def main():
-    """
-    function for get all posts from habr from inputted date(in sys.argv)
-        to current date
-    if date not given get posts for current day
-    """
-    print("program for print posts from habr.com/ru/all into json file"
-          "\n\tposts gets by current date, but if you want get posts "
-          "from other date put your date into param:"
-          "\n\t\tparseHabr.py yyyy-mm-dd"
-          "\n\tfor example: $ parseHabr.py 2022-06-18")
-    if len(sys.argv) > 1:
-        date = sys.argv[1]
-    else:
-        date = str(datetime.date.today())
-    if not os.path.exists("habr"):
-        os.mkdir("habr")
-    html_path = "habr/index.html"
-    url = "https://habr.com/ru/all"
+def lookup():
     page = 1
-    data = []
+    all_posts = []
+    cur_datetime = datetime.datetime.now()
+
+    delta_time = datetime.timedelta(days=1, minutes=30)
+
+    exit_program = False
     while True:
-        print(f"parse page {page}")
-        full_url = f"{url}/page{page}"
-        get_html(full_url)
-        posts = get_data(html_path, date)
-        for post in posts:
-            data.append(post)
-        if posts[-1].get("time").split(", ")[1] < "18:00:00" \
-                and posts[-1].get("time").split(", ")[0] < date:
-            with open("habr/posts.json", "w", encoding="utf-8") as file:
-                json.dump(data, file, indent=4, ensure_ascii=False)
+        if not exit_program:
+            req = requests.get(f"https://habr.com/ru/all/page{page}", cookies=cookies, headers=headers)
+            res = req.text
+            soup = BeautifulSoup(res, 'lxml')
+
+            try:
+                articles = soup.find_all("article")
+                for article in articles:
+                    try:
+                        post_time = article.find('time').get('title')
+                        post_time = datetime.datetime.strptime(post_time, '%Y-%m-%d, %H:%M')
+
+                        if cur_datetime - post_time > delta_time:
+                            exit_program = True
+                            break
+
+                        post_title = article.find(
+                            'h2', class_="tm-article-snippet__title tm-article-snippet__title_h2"
+                        ).text.strip()
+                        post_link = article.find('a',
+                                              class_='tm-article-snippet__title-link').get('href')
+                        post_link = f"https://habr.com{post_link}"
+
+                        post_post = article.find(
+                            'div',
+                            class_="tm-article-body tm-article-snippet__lead").text.strip()
+
+                        post = {
+                            'time': post_time.strftime("%Y-%m-%d, %H:%M"),
+                            'title': post_title,
+                            'link': post_link,
+                            'post': post_post}
+                        all_posts.append(post)
+                    except Exception:
+                        pass
+                page = page + 1
+            except Exception:
+                pass
+        else:
             break
-        page += 1
-        sleep(1)
-    os.remove("habr/index.html")
+    return all_posts
 
 
 if __name__ == "__main__":
-    main()
+    posts = lookup()
+    with open(f"/home/{os.getlogin()}/habr/posts.json", "w", encoding="utf-8") as file:
+        json.dump(posts, file, indent=4, ensure_ascii=False)
