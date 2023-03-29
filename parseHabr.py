@@ -58,11 +58,9 @@ def lookup():
                             exit_program = True
                             break
 
-                        post_title = article.find(
-                            'h2', class_="tm-article-snippet__title tm-article-snippet__title_h2"
-                        ).text.strip()
+                        post_title = article.find('h2', class_="tm-title tm-title_h2").text.strip()
                         post_link = article.find('a',
-                                              class_='tm-article-snippet__title-link').get('href')
+                                              class_='tm-title__link').get('href')
                         post_link = f"https://habr.com{post_link}"
 
                         post_post = article.find(
